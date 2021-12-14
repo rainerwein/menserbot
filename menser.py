@@ -161,7 +161,7 @@ def parse_url(url, veggie: bool):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0',
     }
 
-    xml_data = requests.get(url, headers=headers);
+    xml_data = requests.get(url, headers=headers)
 
     if not xml_data.ok:
         print(f'Error: {xml_data.status_code}. check mensa parameter')
@@ -185,17 +185,16 @@ def parse_url(url, veggie: bool):
             daystring = get_german_days(date.strftime('%A'))
         fullstring = date.strftime(f'{daystring} %d.%m.%Y')
         menu += f'\n{fullstring}\n'
+        added_items = []
         for item in day:
             title = item.find('title').text
             description = get_description(title)
-            category = item.find('category').text
-            notes = build_notes_string(title)
-            plist = [item.find('preis1').text,
-                     item.find('preis2').text,
-                     item.find('preis3').text]
+            if description in added_items:
+                continue
             food_type = get_food_types(item.find('piktogramme').text)
             if 'Vegan' in food_type or 'Vegetarisch' in food_type or not veggie:
                 menu += f'{description}\n'
+                added_items.append(description)
 
     return menu
         
