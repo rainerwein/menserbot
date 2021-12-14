@@ -14,33 +14,35 @@ from discord.commands import Option
 bot = commands.Bot('!')
 messages = []
 
-def getMenu(mensa: Mensa) -> str:
-    url = f'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/mensa-{mensa.value}.xml'
-    menu = parse_url(url=url, mensa=mensa)
+def getMenu(mensa: Mensa, veggie: bool) -> str:
+    url = f'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/mensa-{mensa.name.lower()}.xml'
+    menu = parse_url(url=url, veggie=veggie)
     return menu
 
+
 @bot.slash_command(guild_ids=DEBUG_GUILDS, description='Mensa')
-async def mensa(ctx, mensa: Option(str, "Mensa", choices=[helper.full_mensa_name(mensa) for mensa in Mensa]), veggie: Option(bool, "Veggie", default=True)):
-    mensaEnum = helper.enum_from_full_mensa_name(mensa)
-    embed = discord.Embed(title=f'Speiseplan {helper.full_mensa_name(mensa)}', description="*Lädt...*", color=0x03a1fc)
+async def mensa(ctx, mensa: Option(str, "Mensa", choices=[mensa.value for mensa in Mensa]), veggie: Option(bool, "Veggie", default=True)):
+    mensaEnum = Mensa(mensa)
+    embed = discord.Embed(title=f'Speiseplan {mensaEnum.value} {veggie}', description="*Lädt...*", color=0x49db39 if veggie else 0x03a1fc)
 
     responded:discord.interactions.Interaction = await ctx.respond(embed=embed)
     msg = await responded.original_message()
 
-    bot.loop.create_task(job(message=msg, embed=embed, mensa=Mensa.SUED))
-    helper.insert_values_into_table(guild_id=msg.guild.id, mensa=mensaEnum, channel_id=msg.channel.id, message_id=msg.id, veggie=False)
+    messages.append(msg)
+    bot.loop.create_task(job(message=msg, embed=embed, mensa=mensaEnum, veggie=veggie))
+    helper.insert_values_into_table(guild_id=msg.guild.id, mensa=mensaEnum, channel_id=msg.channel.id, message_id=msg.id, veggie=veggie)
 
 
 @bot.event
 async def on_ready():
     dbList = helper.get_info_from_db()
     for db in dbList:
-        guild = bot.get_guild(db.guild_id)
-        channel = guild.get_channel(db.channel_id)
         try:
+            guild = bot.get_guild(db.guild_id)
+            channel = guild.get_channel(db.channel_id)
             msg = await channel.fetch_message(db.message_id)
             messages.append(msg)
-            bot.loop.create_task(job(message=msg, embed=msg.embeds[0], mensa=db.mensa))
+            bot.loop.create_task(job(message=msg, embed=msg.embeds[0], mensa=db.mensa, veggie=db.veggie))
 
         except discord.NotFound:
             print('message not found on startup, deleting...')
@@ -50,10 +52,11 @@ async def on_ready():
 
 
 # @tasks.loop(seconds=5)
-async def job(message, embed, mensa: Mensa):
+async def job(message, embed, mensa: Mensa, veggie: bool):
     #ich würde ja lieber die eingebaute tasks.loop verwenden aber dann kann man den task nur ein mal starten
     while True:
-        embed.description = str(getMenu(mensa=mensa))
+        embed.title = f'Speiseplan {mensa.value} {"💚" if veggie else ""}'
+        embed.description = str(getMenu(mensa=mensa, veggie=veggie))
         embed.set_footer(text=f"Stand:  {datetime.now().strftime('%d.%m.%Y - %H:%M:%S')}")
         await message.edit(embed=embed)
         await asyncio.sleep(GET_DELAY)
@@ -64,30 +67,30 @@ class MyView(discord.ui.View):
         super().__init__()
         # super().__init__(timeout=60)
 
-    @discord.ui.button(label=f'{helper.full_mensa_name(Mensa.SUED)}', style=discord.ButtonStyle.danger)
+    @discord.ui.button(label=f'{Mensa.SUED.value}', style=discord.ButtonStyle.danger)
     async def sued_callback(self, button, interaction):
         embed = self.message.embeds[0]
-        embed.title = f'Speiseplan {helper.full_mensa_name(Mensa.SUED)}'
+        embed.title = f'Speiseplan {Mensa.SUED.value}'
         embed.description = '*Lädt...*'
 
         self.clear_items()
 
         await interaction.response.edit_message(embed=embed, view=self)
         #job.start(message=self.message, embed=embed, mensa='sued')
-        bot.loop.create_task(job(message=self.message, embed=embed, mensa=Mensa.SUED))
+        bot.loop.create_task(job(message=self.message, embed=embed, mensa=Mensa.SUED, veggie=True))
         helper.insert_values_into_table(guild_id=self.message.guild.id, mensa=Mensa.SUED, channel_id=self.message.channel.id, message_id=self.message.id, veggie=False)
     
-    @discord.ui.button(label=f'{helper.full_mensa_name(Mensa.LMP)}', style=discord.ButtonStyle.danger)
+    @discord.ui.button(label=f'{Mensa.LMP.value}', style=discord.ButtonStyle.danger)
     async def lmp_callback(self, button, interaction):
         embed = self.message.embeds[0]
-        embed.title = f'Speiseplan {helper.full_mensa_name(Mensa.LMP)}'
+        embed.title = f'Speiseplan {Mensa.LMP.value}'
         embed.description = '*Lädt...*'
         
         self.clear_items()
 
         await interaction.response.edit_message(embed=embed, view=self)
         # job.start(message=self.message, embed=embed, mensa='lmp')
-        bot.loop.create_task(job(message=self.message, embed=embed, mensa=Mensa.LMP))
+        bot.loop.create_task(job(message=self.message, embed=embed, mensa=Mensa.LMP, veggie=True))
         helper.insert_values_into_table(guild_id=self.message.guild.id, mensa=Mensa.LMP, channel_id=self.message.channel.id, message_id=self.message.id, veggie=False)
         
     async def on_timeout(self):

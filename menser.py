@@ -156,7 +156,7 @@ def get_description(title):
     return ''.join(raw)
 
 
-def parse_url(url, mensa):
+def parse_url(url, veggie: bool):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0',
     }
@@ -194,7 +194,7 @@ def parse_url(url, mensa):
                      item.find('preis2').text,
                      item.find('preis3').text]
             food_type = get_food_types(item.find('piktogramme').text)
-            if 'Vegan' in food_type or 'Vegetarisch' in food_type:
+            if 'Vegan' in food_type or 'Vegetarisch' in food_type or not veggie:
                 menu += f'{description}\n'
 
     return menu
