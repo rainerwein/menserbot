@@ -20,17 +20,19 @@ def getMenu(mensa: Mensa, veggie: bool) -> str:
     return menu
 
 
-@bot.slash_command(guild_ids=DEBUG_GUILDS, description='Mensa')
+@bot.slash_command(guild_ids=DEBUG_GUILDS, description='Sich automatisch aktualisierneder Mensaplan')
 async def mensa(ctx, mensa: Option(str, "Mensa", choices=[mensa.value for mensa in Mensa]), veggie: Option(bool, "Veggie", default=True)):
     mensaEnum = Mensa(mensa)
     embed = discord.Embed(title=f'Speiseplan {mensaEnum.value} {veggie}', description="*Lädt...*", color=0x49db39 if veggie else 0x03a1fc)
 
-    responded:discord.interactions.Interaction = await ctx.respond(embed=embed)
-    msg = await responded.original_message()
+    interaction = await ctx.respond(embed=embed)
+    interaction_message = await interaction.original_message()
+    real_message = await interaction_message.channel.fetch_message(interaction_message.id)
 
-    messages.append(msg)
-    bot.loop.create_task(job(message=msg, embed=embed, mensa=mensaEnum, veggie=veggie))
-    helper.insert_values_into_table(guild_id=msg.guild.id, mensa=mensaEnum, channel_id=msg.channel.id, message_id=msg.id, veggie=veggie)
+    bot.loop.create_task(job(message=real_message, embed=embed, mensa=mensaEnum, veggie=veggie))
+    helper.insert_values_into_table(guild_id=real_message.guild.id, mensa=mensaEnum, channel_id=real_message.channel.id, message_id=real_message.id, veggie=veggie)
+    messages.append(real_message)
+
 
 
 @bot.event
@@ -136,7 +138,7 @@ async def on_shutdown():
         message.embeds[0].remove_footer()
         try:
             await message.edit(embed=message.embeds[0], view=None)
-        except discord.errors.NotFound:
+        except discord.NotFound:
             print('message not found on shutdown, deleting...')
             helper.delete_from_db(guild_id=message.guild.id, channel_id=message.channel.id, message_id=message.id)
             pass
