@@ -45,27 +45,37 @@ def get_german_day(day_en: str) -> str:
 def get_food_types(piktogramme):
     fs = piktogramme
     food_types = []
+    food_types_emoji = []
     if fs is None:
         food_types.append('Sonstiges')
-        return food_types
+        return food_types, food_types_emoji
     if '/S.png' in fs:
         food_types.append('Schwein')
+        food_types_emoji.append('🐷')
     if '/R.png' in fs:
         food_types.append('Rind')
+        food_types_emoji.append('🐮')
     if '/G.png' in fs:
         food_types.append('Geflügel')
+        food_types_emoji.append('🐔')
     if '/L.png' in fs:
         food_types.append('Lamm')
+        food_types_emoji.append('🐑')
     if '/W.png' in fs:
         food_types.append('Wild')
+        food_types_emoji.append('🐈')
     if '/F.png' in fs:
         food_types.append('Fisch')
+        food_types_emoji.append('🐟')
     if '/V.png' in fs:
         food_types.append('Vegetarisch')
+        food_types_emoji.append('🌱')
     if '/veg.png' in fs:
         food_types.append('Vegan')
+        food_types_emoji.append('🍀')
     if '/MSC.png' in fs:
         food_types.append('MSC Fisch')
+        food_types_emoji.append('🐟')
     if '/Gf.png' in fs:
         food_types.append('Glutenfrei')
     if '/CO2.png' in fs:
@@ -75,7 +85,7 @@ def get_food_types(piktogramme):
     if '/MV.png' in fs:
         food_types.append('MensaVital')
     
-    return food_types
+    return food_types, food_types_emoji
 
 
 def get_refs(title):
@@ -200,17 +210,22 @@ async def parse_url(url, veggie: bool, loop):
         else:
             daystring = get_german_day(date.strftime('%A'))
         fullstring = date.strftime(f'{daystring} %d.%m.%Y')
-        menu += f'\n{fullstring}\n'
+        menu += f'\n**{fullstring}**\n'
 
         added_items = []
         for item in day:
             title = item.find('title').text
             description = get_description(title)
+            category = item.find('category').text
+            notes = build_notes_string(title)
+            plist = [item.find('preis1').text,
+                     item.find('preis2').text,
+                     item.find('preis3').text]
             if description in added_items:
                 continue
-            food_type = get_food_types(item.find('piktogramme').text)
-            if 'Vegan' in food_type or 'Vegetarisch' in food_type or not veggie:
-                menu += f'{description}\n'
+            food_type, food_type_emoji = get_food_types(item.find('piktogramme').text)
+            if not veggie or 'Vegan' in food_type or 'Vegetarisch' in food_type:
+                menu += f'> {description} `{plist[0] + "€" if not plist[0] == "-" else ""}`  {" ".join(food_type_emoji)}\n'
                 added_items.append(description)
 
     return menu

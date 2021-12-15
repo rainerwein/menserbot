@@ -1,15 +1,14 @@
-from menser import parse_url
 import discord
-from discord.ext import tasks
 from discord.ext import commands
+from discord.commands import Option
 
 from datetime import datetime
 import asyncio
 import signal
+
+from menser import parse_url
+from helper import *
 from config import TOKEN_MENSERBOT, DEBUG_GUILDS, GET_DELAY
-import helper 
-from helper import Mensa
-from discord.commands import Option
 
 bot = commands.Bot('!')
 messages = []
@@ -30,14 +29,14 @@ async def mensa(ctx, mensa: Option(str, "Mensa", choices=[mensa.value for mensa 
     real_message = await interaction_message.channel.fetch_message(interaction_message.id)
 
     bot.loop.create_task(job(message=real_message, embed=embed, mensa=mensaEnum, veggie=veggie))
-    helper.insert_values_into_table(guild_id=real_message.guild.id, mensa=mensaEnum, channel_id=real_message.channel.id, message_id=real_message.id, veggie=veggie)
+    insert_values_into_table(guild_id=real_message.guild.id, mensa=mensaEnum, channel_id=real_message.channel.id, message_id=real_message.id, veggie=veggie)
     messages.append(real_message)
 
 
 
 @bot.event
 async def on_ready():
-    dbList = helper.get_info_from_db()
+    dbList = get_info_from_db()
     for db in dbList:
         try:
             guild = bot.get_guild(db.guild_id)
@@ -48,7 +47,7 @@ async def on_ready():
 
         except discord.NotFound:
             print('message not found on startup, deleting...')
-            helper.delete_from_db(guild_id=db.guild_id, channel_id=db.channel_id, message_id=db.message_id)
+            delete_from_db(guild_id=db.guild_id, channel_id=db.channel_id, message_id=db.message_id)
             pass
     print(f'{bot.user} has connected.')
 
@@ -80,7 +79,7 @@ class MyView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
         #job.start(message=self.message, embed=embed, mensa='sued')
         bot.loop.create_task(job(message=self.message, embed=embed, mensa=Mensa.SUED, veggie=True))
-        helper.insert_values_into_table(guild_id=self.message.guild.id, mensa=Mensa.SUED, channel_id=self.message.channel.id, message_id=self.message.id, veggie=False)
+        insert_values_into_table(guild_id=self.message.guild.id, mensa=Mensa.SUED, channel_id=self.message.channel.id, message_id=self.message.id, veggie=False)
     
     @discord.ui.button(label=f'{Mensa.LMP.value}', style=discord.ButtonStyle.danger)
     async def lmp_callback(self, button, interaction):
@@ -93,7 +92,7 @@ class MyView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
         # job.start(message=self.message, embed=embed, mensa='lmp')
         bot.loop.create_task(job(message=self.message, embed=embed, mensa=Mensa.LMP, veggie=True))
-        helper.insert_values_into_table(guild_id=self.message.guild.id, mensa=Mensa.LMP, channel_id=self.message.channel.id, message_id=self.message.id, veggie=False)
+        insert_values_into_table(guild_id=self.message.guild.id, mensa=Mensa.LMP, channel_id=self.message.channel.id, message_id=self.message.id, veggie=False)
         
     async def on_timeout(self):
         for child in self.children:
@@ -115,18 +114,11 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    if message.content == '!mensa-plain':
-        await message.channel.send(str(await getMenu()))
-        
     elif message.content.startswith('!mensa'):
         await mensaCommand(message)
     
     elif message.content.startswith('!ping'):
         await message.channel.send('pong')
-
-    elif message.content.startswith('!view'):
-        view = MyView()
-        await message.channel.send('Press the button!', view=view)
 
     print(message.content)
 
@@ -140,13 +132,13 @@ async def on_shutdown():
             await message.edit(embed=message.embeds[0], view=None)
         except discord.NotFound:
             print('message not found on shutdown, deleting...')
-            helper.delete_from_db(guild_id=message.guild.id, channel_id=message.channel.id, message_id=message.id)
+            delete_from_db(guild_id=message.guild.id, channel_id=message.channel.id, message_id=message.id)
             pass
 
 
 
 if __name__ == '__main__':
-    helper.check_if_table_exists()
+    check_if_table_exists()
 
     #der ganze scheiß ist nur hier weil ich die Nachricht löschen will, wenn der Bot beendet wird
     loop = bot.loop
@@ -178,5 +170,5 @@ if __name__ == '__main__':
 
         future.remove_done_callback(stop_loop_on_completion)
         print('Cleaning up tasks.')
-        helper._cleanup_loop(loop)
+        cleanup_loop(loop)
            

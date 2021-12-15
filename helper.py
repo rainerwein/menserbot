@@ -32,7 +32,7 @@ def _cancel_tasks(loop: asyncio.AbstractEventLoop) -> None:
                 'task': task
             })
 
-def _cleanup_loop(loop: asyncio.AbstractEventLoop) -> None:
+def cleanup_loop(loop: asyncio.AbstractEventLoop) -> None:
     try:
         _cancel_tasks(loop)
         loop.run_until_complete(loop.shutdown_asyncgens())
