@@ -14,16 +14,16 @@ from discord.commands import Option
 bot = commands.Bot('!')
 messages = []
 
-def getMenu(mensa: Mensa, veggie: bool) -> str:
+async def getMenu(mensa: Mensa, veggie: bool) -> str:
     url = f'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/mensa-{mensa.name.lower()}.xml'
-    menu = parse_url(url=url, veggie=veggie)
+    menu = await parse_url(url=url, veggie=veggie, loop=bot.loop)
     return menu
 
 
 @bot.slash_command(guild_ids=DEBUG_GUILDS, description='Sich automatisch aktualisierneder Mensaplan')
 async def mensa(ctx, mensa: Option(str, "Mensa", choices=[mensa.value for mensa in Mensa]), veggie: Option(bool, "Veggie", default=True)):
     mensaEnum = Mensa(mensa)
-    embed = discord.Embed(title=f'Speiseplan {mensaEnum.value} {veggie}', description="*Lädt...*", color=0x49db39 if veggie else 0x03a1fc)
+    embed = discord.Embed(title=f'Speiseplan {mensaEnum.value}', description="*Lädt...*", color=0x49db39 if veggie else 0x03a1fc)
 
     interaction = await ctx.respond(embed=embed)
     interaction_message = await interaction.original_message()
@@ -58,7 +58,7 @@ async def job(message, embed, mensa: Mensa, veggie: bool):
     #ich würde ja lieber die eingebaute tasks.loop verwenden aber dann kann man den task nur ein mal starten
     while True:
         embed.title = f'Speiseplan {mensa.value} {"💚" if veggie else ""}'
-        embed.description = str(getMenu(mensa=mensa, veggie=veggie))
+        embed.description = str(await getMenu(mensa=mensa, veggie=veggie))
         embed.set_footer(text=f"Stand:  {datetime.now().strftime('%d.%m.%Y - %H:%M:%S')}")
         await message.edit(embed=embed)
         await asyncio.sleep(GET_DELAY)
@@ -116,7 +116,7 @@ async def on_message(message):
         return
 
     if message.content == '!mensa-plain':
-        await message.channel.send(str(getMenu()))
+        await message.channel.send(str(await getMenu()))
         
     elif message.content.startswith('!mensa'):
         await mensaCommand(message)

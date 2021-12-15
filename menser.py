@@ -3,12 +3,27 @@ import re
 import xml.etree.ElementTree as ET
 from discord.role import R
 import requests
+import aiohttp
 
 refs_regex = re.compile('(\([ ,a-zA-Z0-9]*\))')
 split_refs_regex = re.compile('[\(,]([ a-zA-Z0-9]*)')
 remove_refs_regex = re.compile('\([ ,a-zA-Z0-9]*\)')
 
-def get_german_days(day_en: str) -> str:
+class Plan:
+    def __init__(self, mensa, veggie, menu):
+        self.mensa = mensa
+        self.veggie = veggie
+        self.menu: self.Menu = menu
+    
+    class Menu:
+        def __init__(self, desc, price, categories, allergens):
+            self.desc = desc
+            self.price = price
+            self.options = categories
+            self.allergens = allergens
+    
+
+def get_german_day(day_en: str) -> str:
     if day_en == 'Monday':
         return 'Montag'
     elif day_en == 'Tuesday':
@@ -156,18 +171,19 @@ def get_description(title):
     return ''.join(raw)
 
 
-def parse_url(url, veggie: bool):
+async def parse_url(url, veggie: bool, loop):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0',
     }
 
-    xml_data = requests.get(url, headers=headers);
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if not response.status == 200:
+                return
 
-    if not xml_data.ok:
-        print(f'Error: {xml_data.status_code}. check mensa parameter')
-        return
+            xml_data = await response.text()
 
-    root = ET.fromstring(xml_data.content.decode('utf-8'))
+    root = ET.fromstring(xml_data)
 
     menu = ''
 
@@ -182,7 +198,7 @@ def parse_url(url, veggie: bool):
         elif today + datetime.timedelta(days=1) == date:
             daystring = 'Morgen'
         else:
-            daystring = get_german_days(date.strftime('%A'))
+            daystring = get_german_day(date.strftime('%A'))
         fullstring = date.strftime(f'{daystring} %d.%m.%Y')
         menu += f'\n{fullstring}\n'
 
