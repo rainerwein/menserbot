@@ -2,7 +2,6 @@ import datetime
 import re
 import xml.etree.ElementTree as ET
 from discord.role import R
-import requests
 import aiohttp
 
 refs_regex = re.compile('(\([ ,a-zA-Z0-9]*\))')
@@ -69,10 +68,10 @@ def get_food_types(piktogramme):
         food_types_emoji.append('🐟')
     if '/V.png' in fs:
         food_types.append('Vegetarisch')
-        food_types_emoji.append('🌱')
+        food_types_emoji.append('🥕')
     if '/veg.png' in fs:
         food_types.append('Vegan')
-        food_types_emoji.append('🍀')
+        food_types_emoji.append('🌱')
     if '/MSC.png' in fs:
         food_types.append('MSC Fisch')
         food_types_emoji.append('🐟')
@@ -85,18 +84,14 @@ def get_food_types(piktogramme):
     if '/MV.png' in fs:
         food_types.append('MensaVital')
     
-    return food_types, food_types_emoji
-
-
-def get_refs(title):
-    raw = ''.join(refs_regex.findall(title))
-    return split_refs_regex.findall(raw)
+    #remove duplicates from emoji list
+    return food_types, list(dict.fromkeys(food_types_emoji))
 
 
 def build_notes_string(title):
     food_is = []
     food_contains = []
-    refs = get_refs(title)
+    refs = split_refs_regex.findall(''.join(refs_regex.findall(title)))
     for r in refs:
         #Zusatzstoffe
         if r == '1':
@@ -177,14 +172,13 @@ def build_notes_string(title):
 
 
 def get_description(title):
-    raw = remove_refs_regex.split(title)
-    return ''.join(raw)
+    return re.sub(' +', ' ', ''.join(remove_refs_regex.split(title))).strip()
 
 
-async def parse_url(url, veggie: bool, loop):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0',
-    }
+async def parse_url(url, veggie: bool, embed):
+    # headers = {
+    #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0',
+    # }
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
@@ -194,8 +188,6 @@ async def parse_url(url, veggie: bool, loop):
             xml_data = await response.text()
 
     root = ET.fromstring(xml_data)
-
-    menu = ''
 
     for day in root:
         date = datetime.date.fromtimestamp(int(day.get('timestamp')))
@@ -209,25 +201,29 @@ async def parse_url(url, veggie: bool, loop):
             daystring = 'Morgen'
         else:
             daystring = get_german_day(date.strftime('%A'))
-        fullstring = date.strftime(f'{daystring} %d.%m.%Y')
-        menu += f'\n**{fullstring}**\n'
+
+        daystring = date.strftime(f'{daystring} %d.%m.%Y')
 
         added_items = []
+        meals = []
         for item in day:
             title = item.find('title').text
             description = get_description(title)
-            category = item.find('category').text
-            notes = build_notes_string(title)
-            plist = [item.find('preis1').text,
-                     item.find('preis2').text,
-                     item.find('preis3').text]
+            # line = item.find('category').text
+            # notes = build_notes_string(title)
+            plist = [item.find('preis1').text, # Studierende
+                     item.find('preis2').text, # Bedienstete
+                     item.find('preis3').text] # Gäste
             if description in added_items:
                 continue
             food_type, food_type_emoji = get_food_types(item.find('piktogramme').text)
             if not veggie or 'Vegan' in food_type or 'Vegetarisch' in food_type:
-                menu += f'> {description} `{plist[0] + "€" if not plist[0] == "-" else ""}`  {" ".join(food_type_emoji)}\n'
-                added_items.append(description)
+                emoji_string = f'`{"".join(food_type_emoji)}`' if food_type_emoji else ''
+                price_string = f'`{plist[0]}€`' if not plist[0] == '-' else ''
+                menustring = f'{emoji_string}  {description}  {price_string}\n'
 
-    return menu
-        
-        
+                added_items.append(description)
+                meals.append(menustring)
+        if meals:
+            embed.add_field(name=daystring, value="".join(meals), inline=False)
+
