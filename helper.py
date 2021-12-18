@@ -11,14 +11,14 @@ class Mensa(Enum):
     CAFE_KOCH = 'Cafeteria Kochstraße'
 
 def api_url(mensa: Mensa) -> str:
-    switch = {
+    dict = {
         Mensa.SUED: 'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/mensa-sued.xml',
         Mensa.LMP: 'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/mensa-lmp.xml',
         Mensa.TRIE: 'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/mensateria-triesdorf.xml',
         Mensa.CAFE_KOCH: 'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/cafeteria-kochstr.xml',
         Mensa.EICH: 'https://www.max-manager.de/daten-extern/sw-erlangen-nuernberg/xml/mensa-eichstaett.xml',
     }
-    return switch.get(mensa)
+    return dict.get(mensa)
 
 #joinked from discord.client
 def _cancel_tasks(loop: asyncio.AbstractEventLoop) -> None:

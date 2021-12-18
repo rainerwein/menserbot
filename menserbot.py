@@ -1,4 +1,5 @@
 import discord
+from discord.commands.context import ApplicationContext
 from discord.ext import commands
 from discord.commands import Option
 
@@ -10,7 +11,7 @@ from menser import get_plan, Plan
 from helper import *
 from config import TOKEN_MENSERBOT, GET_DELAY, DEBUG_GUILDS
 
-bot = commands.Bot('')
+bot = commands.Bot('', activity=discord.Activity(name='Speiseplan', type=discord.ActivityType.watching))
 messages = []
 
 @bot.slash_command(description='Sich automatisch aktualisierender Mensaplan')
@@ -25,6 +26,35 @@ async def mensa(ctx, mensa: Option(str, description="Mensa auswählen", choices=
     bot.loop.create_task(job(message=real_message, embed=embed, mensa=mensaEnum, veggie=veggie))
     insert_values_into_table(guild_id=real_message.guild.id, mensa=mensaEnum, channel_id=real_message.channel.id, message_id=real_message.id, veggie=veggie)
     messages.append(real_message)
+
+@bot.slash_command(description='Nachricht löschen', guild_ids=DEBUG_GUILDS)
+async def löschen(ctx: ApplicationContext, message_id: Option(str, description='Zu löschende Nachricht (ID)')):
+    try:
+        message = await ctx.channel.fetch_message(int(message_id))
+        if message in messages:
+            await message.delete()
+            delete_from_db(guild_id=message.guild.id, channel_id=message.channel.id, message_id=message.id)
+            messages.remove(message)
+            await ctx.respond('Nachricht gelöscht.\n*Diese Nachricht verschwindet in 10 Sekunden...*')
+            await asyncio.sleep(10)
+            await ctx.delete()
+            return
+        else:
+            await ctx.respond('Keine Nachricht von mir!\n*Diese Nachricht verschwindet in 10 Sekunden...*')
+            await asyncio.sleep(10)
+            await ctx.delete()
+        return
+    except discord.NotFound:
+        await ctx.respond('Nachricht nicht gefunden! Richtiger Channel?\n*Diese Nachricht verschwindet in 10 Sekunden...*')
+        await asyncio.sleep(10)
+        await ctx.delete()
+        return
+    except Exception as e:
+        print(e)
+
+
+   
+    
 
 # @tasks.loop(seconds=5)
 async def job(message, embed: discord.Embed, mensa: Mensa, veggie: bool):
