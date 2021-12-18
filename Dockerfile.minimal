@@ -1,0 +1,23 @@
+FROM python:3.10-alpine as builder
+
+WORKDIR /menserbot
+COPY requirements.txt .
+COPY helper.py menserbot.py menser.py config.py .
+RUN apk add --no-cache git binutils && \
+#    apk add --no-cache scons patchelf binutils gcc libc-dev && \
+    python -m pip install --no-cache-dir -r requirements.txt && \
+    python -m pip install --no-cache-dir pyinstaller && \
+#    python -m pip install staticx && \
+    pyinstaller -F menserbot.py
+#    staticx dist/menserbot dist/mex
+
+FROM alpine
+WORKDIR /menserbot
+COPY --from=builder /menserbot/dist/menserbot .
+RUN apk add --no-cache tzdata && \
+    cp /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
+    ln -sf /usr/share/zoneinfo/Europe/Berlin /etc/localtime && \
+    echo "Europe/Berlin" > /etc/timezone
+
+CMD ["./menserbot"]
+    

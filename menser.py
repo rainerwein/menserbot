@@ -3,24 +3,30 @@ import re
 import xml.etree.ElementTree as ET
 from discord.role import R
 import aiohttp
+import helper
 
 refs_regex = re.compile('(\([ ,a-zA-Z0-9]*\))')
 split_refs_regex = re.compile('[\(,]([ a-zA-Z0-9]*)')
 remove_refs_regex = re.compile('\([ ,a-zA-Z0-9]*\)')
 
 class Plan:
-    def __init__(self, mensa, veggie, menu):
+    def __init__(self, mensa, veggie):
         self.mensa = mensa
         self.veggie = veggie
-        self.menu: self.Menu = menu
+        self.days = []
     
-    class Menu:
-        def __init__(self, desc, price, categories, allergens):
-            self.desc = desc
-            self.price = price
-            self.options = categories
-            self.allergens = allergens
-    
+    def add_day(self, day):
+        self.days.append(day)
+        return day
+
+    class Day :
+        def __init__(self, day):
+            self.day = day
+            self.meals: list[str] = []
+        
+        def add_meal(self, meal: str):
+            self.meals.append(meal)
+
 
 def get_german_day(day_en: str) -> str:
     if day_en == 'Monday':
@@ -175,19 +181,26 @@ def get_description(title):
     return re.sub(' +', ' ', ''.join(remove_refs_regex.split(title))).strip()
 
 
-async def parse_url(url, veggie: bool, embed):
+async def get_plan(mensa, veggie: bool) -> Plan:
     # headers = {
     #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:94.0) Gecko/20100101 Firefox/94.0',
     # }
+    url = helper.api_url(mensa)
 
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if not response.status == 200:
-                return
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                if not response.status == 200:
+                    return
 
-            xml_data = await response.text()
+                xml_data = await response.text()
+    except Exception as e:
+        print(e)
+        return
 
     root = ET.fromstring(xml_data)
+    
+    plan = Plan(mensa, veggie)
 
     for day in root:
         date = datetime.date.fromtimestamp(int(day.get('timestamp')))
@@ -205,7 +218,10 @@ async def parse_url(url, veggie: bool, embed):
         daystring = date.strftime(f'{daystring} %d.%m.%Y')
 
         added_items = []
-        meals = []
+        # meals = []
+
+        planday = plan.add_day(Plan.Day(daystring))
+
         for item in day:
             title = item.find('title').text
             description = get_description(title)
@@ -223,7 +239,5 @@ async def parse_url(url, veggie: bool, embed):
                 menustring = f'{emoji_string}  {description}  {price_string}\n'
 
                 added_items.append(description)
-                meals.append(menustring)
-        if meals:
-            embed.add_field(name=daystring, value="".join(meals), inline=False)
-
+                planday.add_meal(menustring)
+    return plan

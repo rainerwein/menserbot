@@ -6,14 +6,14 @@ from datetime import datetime
 import asyncio
 import signal
 
-from menser import parse_url
+from menser import get_plan, Plan
 from helper import *
-from config import TOKEN_MENSERBOT, DEBUG_GUILDS, GET_DELAY
+from config import TOKEN_MENSERBOT, GET_DELAY, DEBUG_GUILDS
 
 bot = commands.Bot('')
 messages = []
 
-@bot.slash_command(guild_ids=DEBUG_GUILDS, description='Sich automatisch aktualisierender Mensaplan')
+@bot.slash_command(description='Sich automatisch aktualisierender Mensaplan')
 async def mensa(ctx, mensa: Option(str, description="Mensa auswählen", choices=[mensa.value for mensa in Mensa], default=Mensa.EICH), veggie: Option(bool, "Nur vegetarische/vegane Gerichte", default=True)):
     mensaEnum = Mensa(mensa)
     embed = discord.Embed(title=f'Speiseplan {mensaEnum.value}', description="*Lädt...*", color=0x49db39 if veggie else 0x03a1fc)
@@ -38,7 +38,10 @@ async def job(message, embed: discord.Embed, mensa: Mensa, veggie: bool):
             embed.set_author(name='Veggie\u200b', url='https://xkcd.com/1587/', icon_url='https://cdn-icons-png.flaticon.com/512/723/723633.png')
         embed.set_footer(text=f'Stand:  {datetime.now().strftime("%d.%m.%Y - %H:%M:%S")}')
 
-        await parse_url(url=api_url(mensa=mensa), veggie=veggie, embed=embed)
+        plan: Plan = await get_plan(mensa=mensa, veggie=veggie)
+        for day in plan.days:
+            embed.add_field(name=day.day, value="".join(day.meals), inline=False)
+
         try:
             await message.edit(embed=embed)
         except discord.NotFound:

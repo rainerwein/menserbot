@@ -1,14 +1,22 @@
-FROM python:3.10-slim-buster
+FROM python:3.10-alpine as base
 
-WORKDIR /menserbot
+FROM base as builder 
+
+RUN mkdir /install
+WORKDIR /install
 
 COPY requirements.txt .
+RUN apk add --no-cache git && \
+    python -m pip install --no-cache-dir --target=/install -r requirements.txt
 
-RUN apt-get update && \
-    apt-get -y install git && \
-    python -m pip install -r requirements.txt && \
-    apt-get -y remove git
 
-COPY menserbot.py menser.py .
+FROM base     
+
+COPY --from=builder /install /usr/local/lib/python3.10/site-packages
+
+ENV TZ="Europe/Berlin"
+
+WORKDIR /menserbot
+COPY helper.py config.py menserbot.py menser.py .
 
 CMD [ "python3", "-u", "menserbot.py" ]
