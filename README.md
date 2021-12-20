@@ -3,7 +3,7 @@
 
 ## Wie verwenden
 1. Eine Discord Application erstellen und einen Bot hinzufügen: [Discord Developer Portal](https://discordapp.com/developers/applications)
-2. Den Bot token in `TOKEN_MENSERBOT` als Umgebungsvariable speichern: `export TOKEN_MENSERBOT=*yourbottoken*`
+2. Den Bot token in `TOKEN_MENSERBOT` als Umgebungsvariable speichern: `export TOKEN_MENSERBOT=<deintoken>`
 3. Einen OAuth2 Link mit `application.commands` Scope Erstellen und den Bot zum Server der Wahl hinzufügen
 4. Abhängigkeiten installieren 
 ```
@@ -13,6 +13,7 @@ python3 -m pip install -r requirements.txt
 ```
 python3 menserbot.py
 ```
+Hinweis: Es kann bis zu einer Stunde dauern bis die slash commands bei einem neuen Bot global registriert sind.
 
 ## Wie funktionieren
 Der Bot stellt den Application command `/mensa` zur Verfügung, mit dem ein sich automatisch aktualisierender Speiseplan generiert wird.
@@ -20,6 +21,13 @@ Der Bot stellt den Application command `/mensa` zur Verfügung, mit dem ein sich
 Als Parameter lassen sich aus einer Liste die gewünschte Mensa, sowie die Option nur vegetarische / vegane Gerichte anzuzeigen, auswählen.
 
 Zum Löschen einer Nachricht des Bots gibt es den Befehl `/löschen` der die ID (Rechtsklick -> ID kopieren) der zu löschenden Nachricht übergeben bekommt.
+
+## Docker dir einen
+Der Bot lässt sich mit einem der beiden Dockerfiles in ein Docker Image pflanzen um ihn in einem Container laufen zu lassen
+
+`docker build -t menserbot -f Dockerfile.minimal`
+
+`docker run --env TOKEN_MENSERBOT=<deintoken> menserbot:latest`
 
 ## Anforderungen
 - Mindestens Python 3.8
