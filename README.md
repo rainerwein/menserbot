@@ -15,6 +15,9 @@ python3 menserbot.py
 ```
 Hinweis: Es kann bis zu einer Stunde dauern bis die slash commands bei einem neuen Bot global registriert sind.
 
+### Alternativ kann der Bot auch über folgenden Link eingeladen werden
+[HER DAMIT](https://discord.com/api/oauth2/authorize?client_id=917930384740712500&permissions=0&scope=bot%20applications.commands)
+
 ## Wie funktionieren
 Der Bot stellt den Application command `/mensa` zur Verfügung, mit dem ein sich automatisch aktualisierender Speiseplan generiert wird.
 
