@@ -6,13 +6,15 @@ from discord.commands import Option
 from datetime import datetime
 import asyncio
 import signal
+import os
+from config import TOKEN_MENSERBOT
 
 from menser import get_plan, Plan
 from helper import *
-from config import TOKEN_MENSERBOT, GET_DELAY, DEBUG_GUILDS
 
 bot = commands.Bot('', activity=discord.Activity(name='Speiseplan', type=discord.ActivityType.watching))
 messages = []
+GET_DELAY = 900
 
 @bot.slash_command(description='Sich automatisch aktualisierender Mensaplan')
 async def mensa(ctx, mensa: Option(str, description="Mensa auswählen", choices=[mensa.value for mensa in Mensa], default=Mensa.EICH), veggie: Option(bool, "Nur vegetarische/vegane Gerichte", default=True)):
@@ -27,8 +29,8 @@ async def mensa(ctx, mensa: Option(str, description="Mensa auswählen", choices=
     insert_values_into_table(guild_id=real_message.guild.id, mensa=mensaEnum, channel_id=real_message.channel.id, message_id=real_message.id, veggie=veggie)
     messages.append(real_message)
 
-@bot.slash_command(description='Nachricht löschen', guild_ids=DEBUG_GUILDS)
-async def löschen(ctx: ApplicationContext, message_id: Option(str, description='Zu löschende Nachricht (ID)')):
+@bot.slash_command(description='Nachricht löschen')
+async def löschen(ctx: ApplicationContext, message_id: Option(str, description='Zu löschende Nachricht (ID)'), choices=[message.id for message in messages]):
     try:
         message = await ctx.channel.fetch_message(int(message_id))
         if message in messages:
@@ -125,9 +127,14 @@ async def on_command_error(ctx, error):
     raise error
 
 if __name__ == '__main__':
+    TOKEN_MENSERBOT = os.getenv('TOKEN_MENSERBOT')  
+    if not TOKEN_MENSERBOT:
+        print('TOKEN_MENSERBOT not set!')
+        exit()
+
     check_if_table_exists()
 
-    #der ganze scheiß ist nur hier weil ich die Nachricht löschen will, wenn der Bot beendet wird
+    #der ganze scheiß ist nur hier weil ich die Nachricht bearbeiten will, wenn der Bot beendet wird
     loop = bot.loop
 
     try:
