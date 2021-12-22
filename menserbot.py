@@ -7,7 +7,6 @@ from datetime import datetime
 import asyncio
 import signal
 import os
-from config import TOKEN_MENSERBOT
 
 from menser import get_plan, Plan
 from helper import *
@@ -55,9 +54,6 @@ async def löschen(ctx: ApplicationContext, message_id: Option(str, description=
         print(e)
 
 
-   
-    
-
 # @tasks.loop(seconds=5)
 async def job(message, embed: discord.Embed, mensa: Mensa, veggie: bool):
     while True:
@@ -72,11 +68,17 @@ async def job(message, embed: discord.Embed, mensa: Mensa, veggie: bool):
 
         plan: Plan = await get_plan(mensa=mensa, veggie=veggie)
         for day in plan.days:
+            if not day.meals:
+                continue
             embed.add_field(name=day.day, value="".join(day.meals), inline=False)
+
+        if not embed.fields:
+            embed.description = '*Momentan gibt es hier nichts zu sehen, bitte gehen sie weiter*'
 
         try:
             await message.edit(embed=embed)
         except discord.NotFound:
+            messages.remove(message)
             delete_from_db(guild_id=message.guild.id, channel_id=message.channel.id, message_id=message.id)
             break
 
@@ -99,7 +101,6 @@ async def on_ready():
             bot.loop.create_task(job(message=msg, embed=msg.embeds[0], mensa=db.mensa, veggie=db.veggie))
 
         except discord.NotFound:
-            #print('message not found on startup, deleting...')
             delete_from_db(guild_id=db.guild_id, channel_id=db.channel_id, message_id=db.message_id)
             pass
     print(f'{bot.user} has connected.')
