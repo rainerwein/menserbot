@@ -7,13 +7,14 @@ from datetime import datetime
 import asyncio
 import signal
 import os
+from sys import exit
 
 from menser import get_plan, Plan
 from helper import *
 
 bot = commands.Bot('', activity=discord.Activity(name='Speiseplan', type=discord.ActivityType.watching))
 messages = []
-GET_DELAY = 900
+GET_DELAY = 600
 
 @bot.slash_command(description='Sich automatisch aktualisierender Mensaplan')
 async def mensa(ctx, mensa: Option(str, description="Mensa auswählen", choices=[mensa.value for mensa in Mensa], default=Mensa.EICH), veggie: Option(bool, "Nur vegetarische/vegane Gerichte", default=True)):
@@ -62,11 +63,18 @@ async def job(message, embed: discord.Embed, mensa: Mensa, veggie: bool):
         embed.description = ''
         embed.title = f'Speiseplan {mensa.value}'
         embed.color = 0x49db39 if veggie else 0x03a1fc
+
+        plan: Plan = await get_plan(mensa=mensa, veggie=veggie)
+        if not plan:
+            embed.description = '*Irgendwas ist schief gelaufen*'
+            await message.edit(embed=embed, view=None)
+            await asyncio.sleep(GET_DELAY)
+            continue
+
         if veggie: 
             embed.set_author(name='Veggie\u200b', url='https://xkcd.com/1587/', icon_url='https://cdn-icons-png.flaticon.com/512/723/723633.png')
         embed.set_footer(text=f'Stand:  {datetime.now().strftime("%d.%m.%Y - %H:%M:%S")}')
 
-        plan: Plan = await get_plan(mensa=mensa, veggie=veggie)
         for day in plan.days:
             if not day.meals:
                 continue

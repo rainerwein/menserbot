@@ -30,7 +30,19 @@ Der Bot lässt sich mit einem der beiden Dockerfiles in ein Docker Image pflanze
 
 `docker build -t menserbot -f Dockerfile.minimal`
 
-`docker run --env TOKEN_MENSERBOT=<deintoken> menserbot:latest`
+`docker run -d --env TOKEN_MENSERBOT=<deintoken> menserbot:latest`
+
+Um den Container zu exportieren und einzupacken
+
+`docker save menserbot:latest | gzip > menserbot.tar.gz`
+
+und dann wieder zu laden
+
+`docker load -i menserbot.tar.gz`
+
+um Dateien in/aus dem Container zu kopieren
+
+`docker cp <container>:/source/path /dest/path`
 
 ## Anforderungen
 - Mindestens Python 3.8
